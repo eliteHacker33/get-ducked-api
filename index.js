@@ -5,6 +5,7 @@ if (process.env.NODE_ENV !== "production" && process.env.NODE_ENV !== "test") {
   const { config } = await import("dotenv");
   config();
 }
+
 const fastify = Fastify({
   logger: true,
 });
