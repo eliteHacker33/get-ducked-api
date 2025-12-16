@@ -1,13 +1,16 @@
-// Import the framework and instantiate it
-import Fastify from "fastify";
-
 if (process.env.NODE_ENV !== "production" && process.env.NODE_ENV !== "test") {
   const { config } = await import("dotenv");
   config();
 }
+import Fastify from "fastify";
 
 const fastify = Fastify({
   logger: true,
+});
+
+fastify.register(import("@fastify/mongodb"), {
+  forceClose: true,
+  url: process.env.MONGODB_URI,
 });
 
 // Declare a route
