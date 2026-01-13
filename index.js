@@ -1,16 +1,21 @@
-// Import the framework and instantiate it
+if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
+  const { config } = await import('dotenv');
+  config();
+}
 import Fastify from 'fastify';
-import qrCode from './routes/qrCode/index.js';
+
 const fastify = Fastify({
   logger: true,
 });
 
-// Declare a route
-fastify.get('/', async function handler(request, reply) {
-  return { hello: 'world' };
+fastify.register(import('@fastify/mongodb'), {
+  forceClose: true,
+  url: process.env.MONGODB_URI,
 });
 
-await fastify.register(import('./routes/qrCode/index.js'), { prefix: '/qrCode' });
+await fastify.register(import('./routes/qrCode/index.js'), {
+  prefix: '/qrCode',
+});
 
 // Run the server!
 try {
