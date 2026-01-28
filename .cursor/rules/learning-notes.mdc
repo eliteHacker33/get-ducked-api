@@ -1,0 +1,136 @@
+---
+description: Learning-focused guidance and code understanding checkpoints
+alwaysApply: true
+---
+
+# Learning Notes
+
+## Learning Philosophy
+
+This project is a learning platform. The goal is understanding, not just working code. Every piece of code should be understood before moving forward.
+
+## Code Review Checklist
+
+When reviewing generated code, ask yourself:
+
+1. **Do I understand what this code does?**
+   - Can you explain it in plain English?
+   - Do you know what each function/method does?
+
+2. **Do I understand why this approach was chosen?**
+   - Why this pattern over alternatives?
+   - What are the trade-offs?
+
+3. **Do I understand how the pieces fit together?**
+   - How does this route connect to the database?
+   - How does data flow through the application?
+
+4. **Do I understand potential issues?**
+   - What could go wrong?
+   - How are errors handled?
+   - Are there edge cases?
+
+## Questions to Ask About Generated Code
+
+### About Fastify
+
+- Why do we use `await` when registering plugins?
+- What's the difference between `request.params` and `request.query`?
+- How does Fastify's plugin system work?
+- Why do we return objects from route handlers?
+
+### About MongoDB
+
+- How does `findOne` differ from `find`?
+- What happens if a query returns no results?
+- Why do we create indexes?
+- How does MongoDB handle duplicate keys?
+
+### About Async/Await
+
+- Why are route handlers async functions?
+- What happens if we forget `await`?
+- How does error handling work with async/await?
+
+### About Project Structure
+
+- Why are routes organized in separate files?
+- How does the plugin registration work?
+- Why do we use ES modules instead of CommonJS?
+
+## Learning Workflow
+
+1. **Generate code** - Let AI create the initial implementation
+2. **Read and understand** - Go through each line
+3. **Ask questions** - Don't hesitate to ask "why" or "how"
+4. **Experiment** - Try modifying code to see what happens
+5. **Verify understanding** - Explain it back in your own words
+
+## Common Learning Moments
+
+### Understanding Plugin Registration
+
+```javascript
+await fastify.register(import('./routes/qrCode/index.js'), {
+  prefix: '/qrCode',
+});
+```
+
+**What to understand:**
+
+- Why `await` is needed
+- How the prefix works
+- What happens during registration
+- How routes become available
+
+### Understanding Database Queries
+
+```javascript
+const qrCode = await qrCodesCollection.findOne({ id: id });
+```
+
+**What to understand:**
+
+- How MongoDB queries work
+- What the query object means
+- Why we use `await`
+- What happens if nothing is found
+
+### Understanding Route Handlers
+
+```javascript
+fastify.get('/:id', async (request, reply) => {
+  const { id } = request.params;
+  // ...
+});
+```
+
+**What to understand:**
+
+- How URL parameters are extracted
+- The difference between `request` and `reply`
+- Why handlers are async
+- How responses are sent
+
+## When to Ask Questions
+
+Ask questions when:
+
+- You see a pattern you don't recognize
+- Code does something unexpected
+- You're not sure why a choice was made
+- You want to understand alternatives
+- Something seems overly complex
+
+## Learning Resources
+
+- Fastify Documentation: https://www.fastify.io/
+- MongoDB Node.js Driver: https://www.mongodb.com/docs/drivers/node/
+- ES Modules: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules
+
+## Remember
+
+- **There are no stupid questions** - Understanding is the goal
+- **Code should be explainable** - If you can't explain it, ask
+- **Experimentation is learning** - Try things, break things, fix things
+- **Understanding > Speed** - Take time to understand before moving on

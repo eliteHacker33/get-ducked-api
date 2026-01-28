@@ -1,0 +1,53 @@
+---
+description: Core project context and overview
+alwaysApply: true
+---
+
+# Project Overview
+
+## Purpose
+
+This is a Fastify-based REST API that defines and correlates QR codes with their data. The project serves as a learning platform where all code should be understood and verified.
+
+## Tech Stack
+
+- **Runtime**: Node.js with ES Modules (`"type": "module"`)
+- **Framework**: Fastify v5.6.2 - A fast and low overhead web framework
+- **Database**: MongoDB v7.0.0 via `@fastify/mongodb` plugin
+- **QR Code Generation**: `qrcode` library v1.5.4
+- **Environment**: `dotenv` for environment variable management
+
+## Project Structure
+
+```
+get-ducked-api/
+├── index.js                 # Main application entry point
+├── routes/
+│   └── qrCode/
+│       └── index.js        # QR code route handlers
+├── .env.example            # Environment variable template
+├── docker-compose.yml      # MongoDB container setup
+└── package.json            # Dependencies and scripts
+```
+
+## Key Dependencies Explained
+
+- **Fastify**: Chosen for its performance and plugin architecture. It's faster than Express and has built-in async/await support.
+- **@fastify/mongodb**: Provides MongoDB connection and database access via `fastify.mongo.db`
+- **qrcode**: Library for generating QR code images/data
+- **dotenv**: Loads environment variables from `.env` file (only in non-production/test environments)
+
+## Development Environment
+
+- MongoDB runs via Docker Compose on port 27017
+- API server runs on port 3000
+- Environment variables are loaded from `.env` file (see `.env.example`)
+
+## Learning Goals
+
+This project emphasizes understanding over speed. All generated code should:
+
+- Be explained clearly
+- Follow established patterns
+- Include comments where concepts might be unfamiliar
+- Be verified as understood before moving forward

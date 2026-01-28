@@ -1,0 +1,105 @@
+---
+description: Fastify framework patterns and conventions
+globs: **/*.js
+alwaysApply: false
+---
+
+# Fastify Patterns
+
+## Why Fastify?
+
+Fastify is a web framework focused on performance and developer experience. It uses a plugin-based architecture where routes are registered as plugins, making the codebase modular and testable.
+
+## Plugin Registration Pattern
+
+Fastify uses plugins to organize code. Each route module exports a default async function that receives `fastify` and `opts` parameters.
+
+### ✅ Good Example
+
+```javascript
+// routes/qrCode/index.js
+export default async (fastify, opts) => {
+  // Access MongoDB via the registered plugin
+  const qrCodesCollection = fastify.mongo.db.collection('qrCodes');
+
+  // Register routes within the plugin
+  fastify.get('/:id', async (request, reply) => {
+    // Route handler
+  });
+};
+```
+
+**Why this pattern?** Plugins encapsulate related functionality and can be registered with prefixes, making the API structure clear and maintainable.
+
+### Plugin Registration in Main File
+
+```javascript
+// index.js
+await fastify.register(import('./routes/qrCode/index.js'), {
+  prefix: '/qrCode',
+});
+```
+
+**Why await?** Fastify plugins can be async, and awaiting ensures they're fully registered before the server starts.
+
+## Route Handler Structure
+
+### ✅ Good Example
+
+```javascript
+fastify.get('/:id', async (request, reply) => {
+  const { id } = request.params;
+
+  // Business logic here
+  const result = await someOperation(id);
+
+  // Fastify automatically serializes objects to JSON
+  return result;
+});
+```
+
+**Key Points:**
+
+- Route handlers are async functions
+- `request` contains params, query, body, headers
+- `reply` is used for custom responses (status codes, headers)
+- Returning an object automatically sends JSON with 200 status
+
+### Custom Status Codes
+
+```javascript
+fastify.post('/create', async (request, reply) => {
+  const result = await createItem(request.body);
+
+  // Use reply for custom status codes
+  return reply.code(201).send(result);
+});
+```
+
+## Request Object Properties
+
+- `request.params` - URL parameters (e.g., `/:id`)
+- `request.query` - Query string parameters (e.g., `?page=1`)
+- `request.body` - Request body (requires body parser plugin)
+- `request.headers` - HTTP headers
+- `request.log` - Fastify logger instance
+
+## Logging
+
+Fastify has built-in logging via Pino:
+
+```javascript
+const fastify = Fastify({
+  logger: true, // Enable logging
+});
+
+// Use in routes
+fastify.log.info('Processing request');
+fastify.log.error('Error occurred', { error });
+```
+
+## Questions to Consider
+
+- Why do we use `await` when registering plugins?
+- What's the difference between returning a value and using `reply.send()`?
+- How does Fastify's plugin system help with code organization?

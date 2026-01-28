@@ -1,0 +1,173 @@
+---
+description: Error handling patterns and best practices
+globs: **/*.js
+alwaysApply: false
+---
+
+# Error Handling
+
+## Why Proper Error Handling?
+
+Good error handling provides:
+
+- Clear feedback to API consumers
+- Debugging information for developers
+- Graceful degradation when things go wrong
+- Security (don't leak internal details)
+
+## Error Types
+
+### Database Errors
+
+MongoDB operations can fail for various reasons:
+
+```javascript
+try {
+  const result = await qrCodesCollection.insertOne(data);
+  return reply.code(201).send(result);
+} catch (error) {
+  // Handle duplicate key error (unique index violation)
+  if (error.code === 11000) {
+    return reply.code(409).send({
+      error: 'QR code already exists',
+      code: 'DUPLICATE_ID',
+    });
+  }
+
+  // Handle other database errors
+  fastify.log.error('Database error', { error });
+  return reply.code(500).send({
+    error: 'Failed to create QR code',
+    code: 'DATABASE_ERROR',
+  });
+}
+```
+
+**Why check error codes?** Different errors need different responses. A duplicate ID is a client error (409), while a connection failure is a server error (500).
+
+### Not Found Errors
+
+```javascript
+fastify.get('/:id', async (request, reply) => {
+  const qrCode = await qrCodesCollection.findOne({ id: request.params.id });
+
+  if (!qrCode) {
+    return reply.code(404).send({
+      error: 'QR code not found',
+      code: 'NOT_FOUND',
+    });
+  }
+
+  return qrCode;
+});
+```
+
+**Why check before returning?** Always validate that resources exist before returning them.
+
+### Validation Errors
+
+```javascript
+fastify.post('/generate', async (request, reply) => {
+  const { data } = request.body;
+
+  if (!data) {
+    return reply.code(400).send({
+      error: 'Missing required field: data',
+      code: 'VALIDATION_ERROR',
+      field: 'data',
+    });
+  }
+
+  if (typeof data !== 'string') {
+    return reply.code(400).send({
+      error: 'Field "data" must be a string',
+      code: 'VALIDATION_ERROR',
+      field: 'data',
+    });
+  }
+
+  // Continue with valid data
+});
+```
+
+**Why validate early?** Fail fast - check inputs before doing expensive operations.
+
+## Error Response Format
+
+Keep error responses consistent:
+
+```javascript
+{
+  error: "Human-readable error message",
+  code: "ERROR_CODE",        // Machine-readable code
+  field: "fieldName",         // Optional: which field caused the error
+  details: {}                 // Optional: additional context
+}
+```
+
+## Logging Errors
+
+Always log errors for debugging:
+
+```javascript
+try {
+  // Operation
+} catch (error) {
+  fastify.log.error('Operation failed', {
+    error: error.message,
+    stack: error.stack,
+    context: { id, userId }, // Relevant context
+  });
+
+  return reply.code(500).send({ error: 'Internal server error' });
+}
+```
+
+**Why log with context?** Logs help debug issues in production. Include relevant IDs, user info, etc.
+
+## Error Propagation
+
+For complex operations, handle errors at the appropriate level:
+
+```javascript
+// Route handler
+fastify.post('/generate', async (request, reply) => {
+  try {
+    const qrCode = await createQrCode(request.body);
+    return reply.code(201).send(qrCode);
+  } catch (error) {
+    if (error.statusCode) {
+      // Error already has status code (from helper function)
+      return reply.code(error.statusCode).send({ error: error.message });
+    }
+    // Unexpected error
+    fastify.log.error('Unexpected error', { error });
+    return reply.code(500).send({ error: 'Internal server error' });
+  }
+});
+
+// Helper function
+async function createQrCode(data) {
+  if (!data.id) {
+    const error = new Error('Missing required field: id');
+    error.statusCode = 400;
+    throw error;
+  }
+  // ...
+}
+```
+
+## Common HTTP Status Codes
+
+- **400 Bad Request**: Invalid input/validation error
+- **401 Unauthorized**: Authentication required
+- **403 Forbidden**: Authenticated but not authorized
+- **404 Not Found**: Resource doesn't exist
+- **409 Conflict**: Resource conflict (e.g., duplicate)
+- **500 Internal Server Error**: Unexpected server error
+
+## Questions to Consider
+
+- Why shouldn't we return the full error object to the client?
+- What's the difference between 400 and 500 status codes?
+- When should we log errors vs. just return them?

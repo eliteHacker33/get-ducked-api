@@ -1,0 +1,174 @@
+---
+description: API design and routing conventions
+globs: routes/**/*.js
+alwaysApply: false
+---
+
+# API Conventions
+
+## Why These Conventions?
+
+Consistent API design makes the codebase predictable and easier to understand. Following RESTful principles helps create intuitive endpoints.
+
+## Route Organization
+
+Routes are organized by domain/resource in the `routes/` directory:
+
+```
+routes/
+└── qrCode/
+    └── index.js  # All QR code related routes
+```
+
+**Why this structure?** Each resource gets its own directory, making it easy to find and maintain related endpoints.
+
+## Endpoint Naming
+
+### ✅ Good Examples
+
+```javascript
+// GET /qrCode/:id - Retrieve a specific QR code
+fastify.get('/:id', async (request, reply) => {
+  // ...
+});
+
+// POST /qrCode/generate - Create a new QR code
+fastify.post('/generate', async (request, reply) => {
+  // ...
+});
+
+// PUT /qrCode/:id - Update a QR code
+fastify.put('/:id', async (request, reply) => {
+  // ...
+});
+
+// DELETE /qrCode/:id - Delete a QR code
+fastify.delete('/:id', async (request, reply) => {
+  // ...
+});
+```
+
+**Conventions:**
+
+- Use nouns for resources (`qrCode`, not `getQrCode`)
+- Use HTTP verbs appropriately (GET for retrieval, POST for creation)
+- Use plural or singular consistently (we use singular: `qrCode`)
+
+## HTTP Methods
+
+- **GET**: Retrieve data (idempotent, safe)
+- **POST**: Create new resources (not idempotent)
+- **PUT**: Update/replace resources (idempotent)
+- **DELETE**: Remove resources (idempotent)
+- **PATCH**: Partial updates (idempotent)
+
+## Status Codes
+
+Use appropriate HTTP status codes:
+
+### ✅ Good Examples
+
+```javascript
+// 200 OK - Successful GET request
+fastify.get('/:id', async (request, reply) => {
+  const qrCode = await findQrCode(id);
+  return qrCode; // Fastify defaults to 200
+});
+
+// 201 Created - Successful POST request
+fastify.post('/generate', async (request, reply) => {
+  const newQrCode = await createQrCode();
+  return reply.code(201).send(newQrCode);
+});
+
+// 404 Not Found - Resource doesn't exist
+fastify.get('/:id', async (request, reply) => {
+  const qrCode = await findQrCode(id);
+  if (!qrCode) {
+    return reply.code(404).send({ error: 'Not found' });
+  }
+  return qrCode;
+});
+
+// 400 Bad Request - Invalid input
+fastify.post('/generate', async (request, reply) => {
+  if (!request.body.data) {
+    return reply.code(400).send({ error: 'Missing required field: data' });
+  }
+  // ...
+});
+```
+
+## Request/Response Formats
+
+### Request Body
+
+```javascript
+fastify.post('/generate', async (request, reply) => {
+  // Access request body
+  const { data, metadata } = request.body;
+  // ...
+});
+```
+
+**Note:** Fastify requires `@fastify/formbody` or `@fastify/json` plugin to parse request bodies.
+
+### Response Format
+
+Keep responses consistent:
+
+```javascript
+// Success response
+return {
+  id: 'uuid',
+  data: '...',
+  createdAt: '2026-01-27T...',
+};
+
+// Error response
+return reply.code(400).send({
+  error: 'Error message',
+  code: 'ERROR_CODE', // Optional error code
+});
+```
+
+## Route Prefixes
+
+Routes are registered with prefixes in the main file:
+
+```javascript
+// index.js
+await fastify.register(import('./routes/qrCode/index.js'), {
+  prefix: '/qrCode',
+});
+```
+
+**Why prefixes?** This keeps route definitions clean and allows easy API versioning later (e.g., `/v1/qrCode`).
+
+## URL Parameters
+
+Use URL parameters for resource identifiers:
+
+```javascript
+fastify.get('/:id', async (request, reply) => {
+  const { id } = request.params; // Extract from URL
+  // ...
+});
+```
+
+## Query Parameters
+
+Use query parameters for filtering, pagination, etc.:
+
+```javascript
+fastify.get('/', async (request, reply) => {
+  const { page = 1, limit = 10 } = request.query;
+  // ...
+});
+```
+
+## Questions to Consider
+
+- Why do we use POST for creation instead of PUT?
+- What's the difference between 400 and 404 status codes?
+- How would you add pagination to a list endpoint?
