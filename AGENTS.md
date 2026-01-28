@@ -2,7 +2,29 @@
 
 ## Project Overview
 
-This is a Fastify-based REST API that defines and correlates QR codes with their data. The project serves as a learning platform where code understanding is prioritized over speed.
+A Fastify-based REST API for managing QR codes and their associated content. This is a learning platform where code understanding is prioritized over speed.
+
+### Purpose
+
+Admin users create QR codes that are printed/embedded on physical objects for sale. Regular users scan these QR codes to attach or view content.
+
+### User Flow
+
+1. **Admin**: Creates QR codes via API
+2. **First Scanner**: Scans QR code → uploads photo/video + text → QR code becomes read-only
+3. **Subsequent Scanners**: Can scan but cannot modify; only the first scanner after data upload (besides the owner) can view the content
+
+### Key Business Rules
+
+- **One-to-one relationship**: Each QR code has one owner (the first scanner who uploads data)
+- **Read-only after upload**: Once data is attached, the QR code cannot be modified
+- **Exclusive viewing**: Only the first person to scan after data upload (besides the owner) can view content
+- **Authentication required**: Users must have an account to scan QR codes
+- **Typical use case**: Purchaser scans QR code and attaches their content
+
+### API Role
+
+This API supports a future mobile/web application. It handles QR code creation (admin) and content management (scanning/uploading/viewing).
 
 ## Tech Stack
 

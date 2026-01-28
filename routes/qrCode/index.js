@@ -3,7 +3,6 @@ import QrCode from 'qrcode';
 
 export default async (fastify, opts) => {
   // index for later
-  // await fastify.mongo.db.collection('qrCodes').createIndex({ id: 1 }, { unique: true });
   const qrCodesCollection = fastify.mongo.db.collection('qrCodes');
 
   // Register your route files here
