@@ -1,0 +1,133 @@
+---
+description: MongoDB database patterns and best practices
+globs: **/*.js
+alwaysApply: false
+---
+
+# MongoDB Patterns
+
+## Why MongoDB?
+
+MongoDB is a NoSQL document database that stores data in flexible, JSON-like documents. It's well-suited for this project because QR code data can vary in structure.
+
+## Connection Access
+
+MongoDB is accessed through the `@fastify/mongodb` plugin, which provides the database connection via `fastify.mongo.db`.
+
+### ✅ Good Example
+
+```javascript
+export default async (fastify, opts) => {
+  // Get collection reference once at plugin registration
+  const qrCodesCollection = fastify.mongo.db.collection('qrCodes');
+
+  fastify.get('/:id', async (request, reply) => {
+    const { id } = request.params;
+    const qrCode = await qrCodesCollection.findOne({ id: id });
+    return qrCode;
+  });
+};
+```
+
+**Why get collection at plugin level?** Getting the collection reference once is more efficient than calling `fastify.mongo.db.collection()` in every route handler.
+
+## Common Operations
+
+### Find One Document
+
+```javascript
+const qrCode = await qrCodesCollection.findOne({ id: id });
+```
+
+**Returns:** The document object or `null` if not found.
+
+### Find Multiple Documents
+
+```javascript
+const qrCodes = await qrCodesCollection.find({ status: 'active' }).toArray();
+```
+
+**Note:** `.find()` returns a cursor. Call `.toArray()` to get all results.
+
+### Insert One Document
+
+```javascript
+const result = await qrCodesCollection.insertOne({
+  id: randomUUID(),
+  createdAt: new Date(),
+  data: 'some data',
+});
+```
+
+**Returns:** Object with `insertedId` property.
+
+### Update One Document
+
+```javascript
+const result = await qrCodesCollection.updateOne({ id: id }, { $set: { updatedAt: new Date() } });
+```
+
+**Returns:** Object with `matchedCount` and `modifiedCount`.
+
+### Delete One Document
+
+```javascript
+const result = await qrCodesCollection.deleteOne({ id: id });
+```
+
+**Returns:** Object with `deletedCount`.
+
+## Indexes
+
+Indexes improve query performance. Create them when registering routes:
+
+### ✅ Good Example
+
+```javascript
+export default async (fastify, opts) => {
+  // Create unique index on id field
+  await fastify.mongo.db.collection('qrCodes').createIndex({ id: 1 }, { unique: true });
+
+  const qrCodesCollection = fastify.mongo.db.collection('qrCodes');
+  // ... routes
+};
+```
+
+**Why indexes?** Without an index, MongoDB scans every document. With an index on `id`, lookups are much faster.
+
+## Error Handling
+
+MongoDB operations can fail. Always handle potential errors:
+
+### ✅ Good Example
+
+```javascript
+try {
+  const qrCode = await qrCodesCollection.findOne({ id: id });
+  if (!qrCode) {
+    return reply.code(404).send({ error: 'QR code not found' });
+  }
+  return qrCode;
+} catch (error) {
+  fastify.log.error('Database error', { error });
+  return reply.code(500).send({ error: 'Internal server error' });
+}
+```
+
+## Date Handling
+
+MongoDB stores dates as BSON Date objects. Use JavaScript `Date` objects:
+
+```javascript
+const document = {
+  id: randomUUID(),
+  createdAt: new Date(), // Current timestamp
+  updatedAt: new Date(),
+};
+```
+
+## Questions to Consider
+
+- Why do we use `findOne` instead of `find` for single document lookups?
+- What happens if we try to insert a document with a duplicate `id` when we have a unique index?
+- How does MongoDB's document structure differ from relational databases?

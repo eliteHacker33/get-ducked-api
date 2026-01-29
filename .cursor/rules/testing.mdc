@@ -1,0 +1,279 @@
+---
+description: Testing framework and conventions
+globs: test/**/*.js
+alwaysApply: false
+---
+
+# Testing Standards
+
+## Testing Stack
+
+This project uses the following testing tools:
+
+- **Test Framework**: Mocha - Industry standard test runner for Node.js
+- **Assertion Library**: Chai - Expressive assertion library with multiple interfaces
+- **Mocking Library**: Sinon - Industry standard for creating spies, stubs, and mocks in Node.js
+
+## Why These Tools?
+
+### Mocha
+
+Mocha is the most widely used test framework for Node.js. It provides:
+
+- Clean, readable test structure with `describe` and `it` blocks
+- Built-in async/await support
+- Excellent reporting and error messages
+- Large ecosystem and community support
+
+### Chai
+
+Chai provides flexible assertion syntax. We use the `assert` interface (TDD style):
+
+```javascript
+assert.equal(result, expected);
+assert.lengthOf(array, 3);
+assert.property(user, 'email');
+```
+
+### Sinon
+
+Sinon is the industry standard for mocking in Node.js. It provides:
+
+- **Spies**: Track function calls without modifying behavior
+- **Stubs**: Replace functions with controlled behavior
+- **Mocks**: Pre-programmed expectations with automatic verification
+
+## Test File Structure
+
+### ✅ Good Example
+
+```javascript
+import { describe, it, beforeEach, afterEach } from 'mocha';
+import { assert } from 'chai';
+import sinon from 'sinon';
+
+describe('Feature Name', () => {
+  let sandbox;
+
+  beforeEach(() => {
+    // Create a sandbox for isolated test mocks
+    sandbox = sinon.createSandbox();
+  });
+
+  afterEach(() => {
+    // Restore all mocks after each test
+    sandbox.restore();
+  });
+
+  it('should do something', async () => {
+    // Arrange
+    const stub = sandbox.stub(someModule, 'someMethod').resolves('value');
+
+    // Act
+    const result = await functionUnderTest();
+
+    // Assert
+    assert.equal(result, 'expected');
+    assert.isTrue(stub.calledOnce);
+  });
+});
+```
+
+## Sinon Sandbox Pattern
+
+Always use Sinon sandboxes for test isolation:
+
+```javascript
+beforeEach(() => {
+  sandbox = sinon.createSandbox();
+});
+
+afterEach(() => {
+  sandbox.restore(); // Automatically restores all mocks
+});
+```
+
+**Why sandboxes?** They ensure test isolation by automatically restoring all mocks, preventing tests from affecting each other.
+
+## Common Sinon Patterns
+
+### Stubbing Functions
+
+```javascript
+// Stub a function to return a value
+const stub = sandbox.stub(module, 'functionName').returns('value');
+
+// Stub an async function
+const stub = sandbox.stub(module, 'asyncFunction').resolves('value');
+
+// Stub to throw an error
+const stub = sandbox.stub(module, 'functionName').throws(new Error('Error message'));
+```
+
+### Spying on Functions
+
+```javascript
+// Spy on a function without changing behavior
+const spy = sandbox.spy(object, 'methodName');
+
+// Verify it was called
+assert.isTrue(spy.calledOnce);
+assert.isTrue(spy.calledWith('arg1', 'arg2'));
+```
+
+### Mocking MongoDB Operations
+
+```javascript
+// Mock MongoDB collection methods
+const findOneStub = sandbox.stub(collection, 'findOne').resolves({ id: '123' });
+const insertOneStub = sandbox.stub(collection, 'insertOne').resolves({ insertedId: '123' });
+```
+
+### Mocking Fastify Request/Reply
+
+```javascript
+// Mock Fastify request object
+const request = {
+  params: { id: '123' },
+  query: { page: 1 },
+  body: { data: 'value' },
+  log: sandbox.stub(),
+};
+
+// Mock Fastify reply object
+const reply = {
+  code: sandbox.stub().returnsThis(),
+  send: sandbox.stub().returnsThis(),
+};
+```
+
+## Test Organization
+
+### File Naming
+
+- Test files should mirror source file structure
+- Use `.test.js` or `.spec.js` suffix
+- Example: `routes/qrCode/index.js` → `test/routes/qrCode/index.test.js`
+
+### Test Structure
+
+```javascript
+describe('Module Name', () => {
+  describe('Function Name', () => {
+    it('should handle success case', () => {
+      // Test implementation
+    });
+
+    it('should handle error case', () => {
+      // Test implementation
+    });
+  });
+});
+```
+
+## Async/Await in Tests
+
+Mocha handles async functions automatically:
+
+```javascript
+it('should handle async operations', async () => {
+  const result = await asyncFunction();
+  assert.equal(result, 'expected');
+});
+```
+
+## Testing Fastify Routes
+
+### ✅ Good Example
+
+```javascript
+import Fastify from 'fastify';
+import { describe, it, beforeEach, afterEach } from 'mocha';
+import { assert } from 'chai';
+import sinon from 'sinon';
+
+describe('POST /qrCode', () => {
+  let fastify;
+  let sandbox;
+
+  beforeEach(async () => {
+    sandbox = sinon.createSandbox();
+    fastify = Fastify();
+
+    // Register plugins and routes
+    await fastify.register(import('../../routes/qrCode/index.js'));
+    await fastify.ready();
+  });
+
+  afterEach(async () => {
+    sandbox.restore();
+    await fastify.close();
+  });
+
+  it('should create a QR code', async () => {
+    const response = await fastify.inject({
+      method: 'POST',
+      url: '/qrCode',
+      payload: { data: 'test' },
+    });
+
+    assert.equal(response.statusCode, 201);
+    assert.property(JSON.parse(response.body), 'id');
+  });
+});
+```
+
+## Chai Assertions
+
+### Common Assertions
+
+```javascript
+// Equality
+assert.equal(value, expected);
+assert.deepEqual(value, expected); // For objects/arrays
+assert.strictEqual(value, expected); // Strict equality (===)
+
+// Truthiness
+assert.isTrue(value);
+assert.isFalse(value);
+assert.exists(value);
+assert.isNull(value);
+assert.isNotNull(value);
+
+// Types
+assert.typeOf(value, 'string');
+assert.typeOf(value, 'object');
+
+// Arrays/Strings
+assert.lengthOf(array, 3);
+assert.include(string, 'substring');
+assert.include(array, 'item');
+
+// Objects
+assert.property(obj, 'key');
+assert.propertyVal(obj, 'key', 'value');
+assert.deepProperty(obj, 'nested.key');
+
+// Errors
+assert.throws(fn);
+assert.throws(fn, Error);
+assert.throws(fn, 'error message');
+assert.throws(fn, Error, 'error message');
+```
+
+## Best Practices
+
+1. **One assertion per test** (when possible) - Makes failures clear
+2. **Use descriptive test names** - Should read like documentation
+3. **Arrange-Act-Assert pattern** - Structure tests clearly
+4. **Test edge cases** - Empty inputs, null values, errors
+5. **Mock external dependencies** - Database, APIs, file system
+6. **Clean up after tests** - Always restore mocks and close connections
+7. **Test behavior, not implementation** - Focus on what, not how
+
+## Questions to Consider
+
+- Why do we use sandboxes instead of direct sinon methods?
+- What's the difference between a spy, stub, and mock?
+- How do we test async route handlers?
+- When should we use `sinon.restore()` vs `sandbox.restore()`?
