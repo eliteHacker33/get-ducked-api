@@ -2,8 +2,11 @@ import { randomUUID } from 'crypto';
 import QrCode from 'qrcode';
 
 export default async (fastify, opts) => {
-  // index for later
   const qrCodesCollection = fastify.mongo.db.collection('qrCodes');
+
+  // Create unique index on id field for fast lookups and to prevent duplicates
+  // This ensures id uniqueness at the database level and speeds up queries
+  await qrCodesCollection.createIndex({ id: 1 }, { unique: true });
 
   // Register your route files here
   fastify.get('/:id', async (request, reply) => {
