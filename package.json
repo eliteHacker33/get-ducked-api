@@ -4,7 +4,7 @@
   "description": "defines and correlates qr codes with their data",
   "main": "src/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha test/**/*.js"
   },
   "author": "",
   "license": "ISC",
@@ -17,5 +17,10 @@
     "mongodb": "^7.0.0",
     "qrcode": "^1.5.4"
   },
-  "type": "module"
+  "type": "module",
+  "devDependencies": {
+    "chai": "^6.2.2",
+    "mocha": "^11.7.5",
+    "sinon": "^21.0.1"
+  }
 }
