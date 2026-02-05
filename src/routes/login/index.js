@@ -7,7 +7,68 @@ export default async (fastify, opts) => {
   // This ensures email uniqueness at the database level
   await usersCollection.createIndex({ email: 1 }, { unique: true });
 
-  fastify.post('/register', async (request, reply) => {
+  fastify.post(
+    '/register',
+    {
+      schema: {
+        tags: ['auth'],
+        description: 'Register a new user account',
+        body: {
+          type: 'object',
+          required: ['email', 'password'],
+          properties: {
+            email: {
+              type: 'string',
+              format: 'email',
+              description: 'User email address',
+            },
+            password: {
+              type: 'string',
+              minLength: 8,
+              description: 'User password (minimum 8 characters)',
+            },
+          },
+        },
+        response: {
+          201: {
+            type: 'object',
+            description: 'Successful registration',
+            properties: {
+              token: {
+                type: 'string',
+                description: 'JWT authentication token',
+              },
+              user: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  email: { type: 'string' },
+                  role: { type: 'string' },
+                },
+              },
+            },
+          },
+          400: {
+            type: 'object',
+            description: 'Validation error',
+            properties: {
+              error: { type: 'string' },
+              code: { type: 'string' },
+              field: { type: 'string' },
+            },
+          },
+          409: {
+            type: 'object',
+            description: 'Email already exists',
+            properties: {
+              error: { type: 'string' },
+              code: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
     const { email, password } = request.body;
 
     // Validate required fields
@@ -112,7 +173,67 @@ export default async (fastify, opts) => {
     }
   });
 
-  fastify.post('/login', async (request, reply) => {
+  fastify.post(
+    '/login',
+    {
+      schema: {
+        tags: ['auth'],
+        description: 'Login with email and password',
+        body: {
+          type: 'object',
+          required: ['email', 'password'],
+          properties: {
+            email: {
+              type: 'string',
+              format: 'email',
+              description: 'User email address',
+            },
+            password: {
+              type: 'string',
+              description: 'User password',
+            },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            description: 'Successful login',
+            properties: {
+              token: {
+                type: 'string',
+                description: 'JWT authentication token',
+              },
+              user: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  email: { type: 'string' },
+                  role: { type: 'string' },
+                },
+              },
+            },
+          },
+          400: {
+            type: 'object',
+            description: 'Validation error',
+            properties: {
+              error: { type: 'string' },
+              code: { type: 'string' },
+              field: { type: 'string' },
+            },
+          },
+          401: {
+            type: 'object',
+            description: 'Invalid credentials',
+            properties: {
+              error: { type: 'string' },
+              code: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
     const { email, password } = request.body;
 
     // Validate required fields
