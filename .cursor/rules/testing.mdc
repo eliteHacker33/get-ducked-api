@@ -149,7 +149,21 @@ const reply = {
 
 ## Test Organization
 
-### File Naming
+### Directory Structure
+
+The test directory structure should **mirror** the source directory structure under `/src`:
+
+- Source files in `/src` should have corresponding test files in `/test`
+- The directory path under `/test` should match the path under `/src`
+- Test files should use the **same filename** as their source files
+
+### File Naming and Location
+
+**Structure Mirroring:**
+
+- `src/routes/login/index.js` → `test/routes/login/index.js`
+- `src/routes/qrCode/index.js` → `test/routes/qrCode/index.js`
+- `src/utils/helpers.js` → `test/utils/helpers.js`
 
 - Test files should mirror source file structure
 - Use `.test.js` or `.spec.js` suffix
