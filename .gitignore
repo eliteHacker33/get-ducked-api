@@ -1,3 +1,4 @@
-node_modules
+# Dependencies - ignore node_modules and all changes/additions within it
+node_modules/
 .env
 get-ducked-api.code-workspace
