@@ -19,25 +19,13 @@ fastify.register(import('@fastify/jwt'), {
   secret: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
 });
 
-// Register Swagger for API documentation
+// Register Swagger for API documentation (static spec from api.yaml)
 fastify.register(import('@fastify/swagger'), {
-  openapi: {
-    info: {
-      title: 'Get Ducked API',
-      description: 'API for managing QR codes and their associated content',
-      version: '1.0.0',
-    },
-    servers: [
-      {
-        url: 'http://localhost:3000',
-        description: 'Development server',
-      },
-    ],
-    tags: [
-      { name: 'auth', description: 'Authentication endpoints' },
-      { name: 'qrCode', description: 'QR code management endpoints' },
-    ],
+  mode: 'static',
+  specification: {
+    path: './api.yaml',
   },
+  exposeRoute: true,
 });
 
 // Register Swagger UI for interactive API documentation
