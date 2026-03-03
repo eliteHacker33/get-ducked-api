@@ -2,49 +2,57 @@ import Fastify from 'fastify';
 import { describe, it, beforeEach, afterEach } from 'mocha';
 import { assert } from 'chai';
 import sinon from 'sinon';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import openapiGlue from 'fastify-openapi-glue';
+import { serviceHandlers } from '../../../src/handlers/index.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const apiSpecPath = join(__dirname, '..', '..', '..', 'api.yaml');
 
 describe('QR Code Routes', () => {
   let fastify;
   let sandbox;
   let qrCodesCollection;
-  let findOneStub;
-  let insertOneStub;
-  let createIndexStub;
+  let usersCollection;
   let logErrorStub;
 
   beforeEach(async () => {
     sandbox = sinon.createSandbox();
 
-    // Create Fastify instance
     fastify = Fastify({
-      logger: false, // Disable logging in tests
+      logger: false,
     });
 
-    // Mock MongoDB collection
     qrCodesCollection = {
       findOne: sandbox.stub(),
       insertOne: sandbox.stub(),
       createIndex: sandbox.stub().resolves(),
     };
 
-    // Mock MongoDB database
-    const mockDb = {
-      collection: sandbox.stub().returns(qrCodesCollection),
+    usersCollection = {
+      findOne: sandbox.stub(),
+      insertOne: sandbox.stub(),
+      createIndex: sandbox.stub().resolves(),
     };
 
-    // Mock MongoDB plugin
-    fastify.decorate('mongo', {
-      db: mockDb,
-    });
+    const mockDb = {
+      collection: sandbox.stub().callsFake((name) =>
+        name === 'users' ? usersCollection : qrCodesCollection,
+      ),
+    };
 
-    // Register the qrCode routes plugin
-    await fastify.register(import('../../../src/routes/qrCode/index.js'), {
-      prefix: '/qrCode',
+    fastify.decorate('mongo', { db: mockDb });
+    fastify.decorate('jwt', { sign: sandbox.stub().returns('mock-jwt-token') });
+
+    await fastify.register(import('../../../src/plugins/dbIndexes.js'));
+    await fastify.register(openapiGlue, {
+      specification: apiSpecPath,
+      serviceHandlers,
     });
 
     await fastify.ready();
 
-    // Stub the logger after Fastify is ready (Fastify already has a log decorator)
     logErrorStub = sandbox.stub(fastify.log, 'error');
   });
 
@@ -77,7 +85,7 @@ describe('QR Code Routes', () => {
       assert.isTrue(qrCodesCollection.findOne.calledWith({ id: qrCodeId }));
     });
 
-    it('should return QR Code endpoint message even when QR code not found', async () => {
+    it('should return 404 when QR code not found', async () => {
       const qrCodeId = 'non-existent-id';
 
       // Mock QR code not found
@@ -88,9 +96,10 @@ describe('QR Code Routes', () => {
         url: `/qrCode/${qrCodeId}`,
       });
 
-      assert.equal(response.statusCode, 200);
+      assert.equal(response.statusCode, 404);
       const body = JSON.parse(response.body);
-      assert.equal(body.message, 'QR Code endpoint');
+      assert.equal(body.error, 'QR code not found');
+      assert.equal(body.code, 'NOT_FOUND');
 
       // Verify findOne was called
       assert.isTrue(qrCodesCollection.findOne.calledOnce);
@@ -133,7 +142,7 @@ describe('QR Code Routes', () => {
         url: '/qrCode/generate',
       });
 
-      assert.equal(response.statusCode, 200);
+      assert.equal(response.statusCode, 201);
       const body = JSON.parse(response.body);
       assert.equal(body.message, 'QR Code generated');
 
@@ -161,7 +170,7 @@ describe('QR Code Routes', () => {
         url: '/qrCode/generate',
       });
 
-      assert.equal(response1.statusCode, 200);
+      assert.equal(response1.statusCode, 201);
 
       // Save the first call's data
       assert.isTrue(qrCodesCollection.insertOne.calledOnce);
@@ -176,7 +185,7 @@ describe('QR Code Routes', () => {
         url: '/qrCode/generate',
       });
 
-      assert.equal(response2.statusCode, 200);
+      assert.equal(response2.statusCode, 201);
 
       // Verify two different calls were made
       assert.equal(qrCodesCollection.insertOne.callCount, 2);

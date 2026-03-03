@@ -3,14 +3,19 @@ import { describe, it, beforeEach, afterEach } from 'mocha';
 import { assert } from 'chai';
 import sinon from 'sinon';
 import bcrypt from 'bcrypt';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import openapiGlue from 'fastify-openapi-glue';
+import { serviceHandlers } from '../../../src/handlers/index.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const apiSpecPath = join(__dirname, '..', '..', '..', 'api.yaml');
 
 describe('Login Routes', () => {
   let fastify;
   let sandbox;
   let usersCollection;
-  let findOneStub;
-  let insertOneStub;
-  let createIndexStub;
+  let qrCodesCollection;
   let bcryptHashStub;
   let bcryptCompareStub;
   let jwtSignStub;
@@ -19,46 +24,44 @@ describe('Login Routes', () => {
   beforeEach(async () => {
     sandbox = sinon.createSandbox();
 
-    // Create Fastify instance
     fastify = Fastify({
-      logger: false, // Disable logging in tests
+      logger: false,
     });
 
-    // Mock MongoDB collection
     usersCollection = {
       findOne: sandbox.stub(),
       insertOne: sandbox.stub(),
       createIndex: sandbox.stub().resolves(),
     };
 
-    // Mock MongoDB database
-    const mockDb = {
-      collection: sandbox.stub().returns(usersCollection),
+    qrCodesCollection = {
+      findOne: sandbox.stub(),
+      insertOne: sandbox.stub(),
+      createIndex: sandbox.stub().resolves(),
     };
 
-    // Mock MongoDB plugin
-    fastify.decorate('mongo', {
-      db: mockDb,
-    });
+    const mockDb = {
+      collection: sandbox.stub().callsFake((name) =>
+        name === 'users' ? usersCollection : qrCodesCollection,
+      ),
+    };
 
-    // Mock JWT plugin
+    fastify.decorate('mongo', { db: mockDb });
+
     jwtSignStub = sandbox.stub().returns('mock-jwt-token');
-    fastify.decorate('jwt', {
-      sign: jwtSignStub,
-    });
+    fastify.decorate('jwt', { sign: jwtSignStub });
 
-    // Stub bcrypt methods
     bcryptHashStub = sandbox.stub(bcrypt, 'hash');
     bcryptCompareStub = sandbox.stub(bcrypt, 'compare');
 
-    // Register the login routes plugin
-    await fastify.register(import('../../../src/routes/login/index.js'), {
-      prefix: '/auth',
+    await fastify.register(import('../../../src/plugins/dbIndexes.js'));
+    await fastify.register(openapiGlue, {
+      specification: apiSpecPath,
+      serviceHandlers,
     });
 
     await fastify.ready();
 
-    // Stub the logger after Fastify is ready (Fastify already has a log decorator)
     logErrorStub = sandbox.stub(fastify.log, 'error');
   });
 
@@ -79,9 +82,8 @@ describe('Login Routes', () => {
 
       assert.equal(response.statusCode, 400);
       const body = JSON.parse(response.body);
-      assert.equal(body.error, 'Missing required field: email');
-      assert.equal(body.code, 'VALIDATION_ERROR');
-      assert.equal(body.field, 'email');
+      assert.equal(body.error, 'Bad Request');
+      assert.equal(body.code, 'FST_ERR_VALIDATION');
     });
 
     it('should return 400 when password is missing', async () => {
@@ -95,9 +97,8 @@ describe('Login Routes', () => {
 
       assert.equal(response.statusCode, 400);
       const body = JSON.parse(response.body);
-      assert.equal(body.error, 'Missing required field: password');
-      assert.equal(body.code, 'VALIDATION_ERROR');
-      assert.equal(body.field, 'password');
+      assert.equal(body.error, 'Bad Request');
+      assert.equal(body.code, 'FST_ERR_VALIDATION');
     });
 
     it('should return 400 when email format is invalid', async () => {
@@ -112,9 +113,8 @@ describe('Login Routes', () => {
 
       assert.equal(response.statusCode, 400);
       const body = JSON.parse(response.body);
-      assert.equal(body.error, 'Invalid email format');
-      assert.equal(body.code, 'VALIDATION_ERROR');
-      assert.equal(body.field, 'email');
+      assert.equal(body.error, 'Bad Request');
+      assert.equal(body.code, 'FST_ERR_VALIDATION');
     });
 
     it('should return 400 when password is too short', async () => {
@@ -129,9 +129,8 @@ describe('Login Routes', () => {
 
       assert.equal(response.statusCode, 400);
       const body = JSON.parse(response.body);
-      assert.equal(body.error, 'Password must be at least 8 characters long');
-      assert.equal(body.code, 'VALIDATION_ERROR');
-      assert.equal(body.field, 'password');
+      assert.equal(body.error, 'Bad Request');
+      assert.equal(body.code, 'FST_ERR_VALIDATION');
     });
 
     it('should return 409 when user already exists', async () => {
@@ -139,7 +138,7 @@ describe('Login Routes', () => {
       const password = 'password123';
 
       // Mock existing user found
-      findOneStub = usersCollection.findOne.resolves({
+      usersCollection.findOne.resolves({
         _id: 'existing-user-id',
         email,
         passwordHash: 'hashed-password',
@@ -300,9 +299,8 @@ describe('Login Routes', () => {
 
       assert.equal(response.statusCode, 400);
       const body = JSON.parse(response.body);
-      assert.equal(body.error, 'Missing required field: email');
-      assert.equal(body.code, 'VALIDATION_ERROR');
-      assert.equal(body.field, 'email');
+      assert.equal(body.error, 'Bad Request');
+      assert.equal(body.code, 'FST_ERR_VALIDATION');
     });
 
     it('should return 400 when password is missing', async () => {
@@ -316,9 +314,8 @@ describe('Login Routes', () => {
 
       assert.equal(response.statusCode, 400);
       const body = JSON.parse(response.body);
-      assert.equal(body.error, 'Missing required field: password');
-      assert.equal(body.code, 'VALIDATION_ERROR');
-      assert.equal(body.field, 'password');
+      assert.equal(body.error, 'Bad Request');
+      assert.equal(body.code, 'FST_ERR_VALIDATION');
     });
 
     it('should return 401 when user is not found', async () => {

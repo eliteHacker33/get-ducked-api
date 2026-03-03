@@ -14,6 +14,7 @@ tags:
 paths:
   /qrCode/{id}:
     get:
+      operationId: getQrCodeById
       tags:
         - qrCode
       description: Get QR code by ID
@@ -47,6 +48,7 @@ paths:
                     type: string
   /qrCode/generate:
     post:
+      operationId: generateQrCode
       tags:
         - qrCode
       description: Generate a new QR code
@@ -73,6 +75,7 @@ paths:
                     type: string
   /auth/register:
     post:
+      operationId: register
       tags:
         - auth
       description: Register a new user account
@@ -140,6 +143,7 @@ paths:
                     type: string
   /auth/login:
     post:
+      operationId: login
       tags:
         - auth
       description: Login with email and password
