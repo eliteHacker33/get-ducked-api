@@ -1,0 +1,132 @@
+# CI/CD Pipeline for get-ducked-api
+# Requires these secrets per environment: MONGODB_URI, FIREBASE_SERVICE_ACCOUNT, JWT_SECRET
+# Requires repo-level secrets: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN
+# Production environment must have "Required reviewers" set for manual approval
+# Firebase service account needs Cloud Run Admin role in GCP IAM
+name: CI/CD Pipeline
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+env:
+  DOCKER_IMAGE: anambypamby/get-ducked-api
+
+jobs:
+  # ============================================
+  # Job 1: Run tests (required before PR merge)
+  # ============================================
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+  # ============================================
+  # Job 2: Build and push Docker image (on merge to main only)
+  # ============================================
+  build:
+    name: Build & Push
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata and build
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_IMAGE }}
+          tags: |
+            type=raw,value=${{ github.sha }}
+            type=raw,value=latest
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  # ============================================
+  # Job 3: Deploy to test environment
+  # ============================================
+  deploy-test:
+    name: Deploy to Test
+    runs-on: ubuntu-latest
+    needs: build
+    environment: test
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Deploy to Cloud Run (Test)
+        id: deploy-test
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: get-ducked-api
+          image: ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
+          region: us-central1
+          project_id: get-ducked-api-test
+          env_vars: |
+            MONGODB_URI=${{ secrets.MONGODB_URI }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            NODE_ENV=production
+          env_vars_update_strategy: overwrite
+
+  # ============================================
+  # Job 4: Deploy to production (manual approval required)
+  # ============================================
+  deploy-prod:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: deploy-test
+    environment: production
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Deploy to Cloud Run (Production)
+        id: deploy-prod
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: get-ducked-api
+          image: ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
+          region: us-central1
+          project_id: get-ducked-api-prod
+          env_vars: |
+            MONGODB_URI=${{ secrets.MONGODB_URI }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            NODE_ENV=production
+          env_vars_update_strategy: overwrite
