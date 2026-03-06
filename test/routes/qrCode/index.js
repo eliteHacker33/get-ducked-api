@@ -8,7 +8,7 @@ import openapiGlue from 'fastify-openapi-glue';
 import { serviceHandlers } from '../../../src/handlers/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const apiSpecPath = join(__dirname, '..', '..', '..', 'api.yaml');
+const apiSpecPath = join(__dirname, '..', '..', '..', 'src', 'api.yaml');
 
 describe('QR Code Routes', () => {
   let fastify;

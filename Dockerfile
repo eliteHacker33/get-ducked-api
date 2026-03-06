@@ -9,7 +9,6 @@ RUN npm ci --omit=dev
 
 # Copy application source
 COPY src ./src
-COPY api.yaml ./
 
 # Expose the port Fastify listens on
 EXPOSE 3000
