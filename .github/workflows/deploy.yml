@@ -64,6 +64,18 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      # This job has no `environment:` — only repo/org secrets are visible here.
+      # If FIREBASE_SERVICE_ACCOUNT exists only under an environment, auth fails with:
+      # "must specify exactly one of workload_identity_provider or credentials_json"
+      - name: Require FIREBASE_SERVICE_ACCOUNT (repository secret)
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "${FIREBASE_SERVICE_ACCOUNT}" ]; then
+            echo "::error::FIREBASE_SERVICE_ACCOUNT is empty for the build job. Add the same JSON key under Settings → Secrets and variables → Actions → Repository secrets (not only Environment secrets). Fork/Dependabot workflows also omit secrets."
+            exit 1
+          fi
+
       - name: Authenticate to Google Cloud (push image to Artifact Registry)
         uses: google-github-actions/auth@v2
         with:
