@@ -1,8 +1,11 @@
 # CI/CD Pipeline for get-ducked-api
 # Requires these secrets per environment: MONGODB_URI, FIREBASE_SERVICE_ACCOUNT, JWT_SECRET
 # Requires repo-level secrets: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN
+# FIREBASE_SERVICE_ACCOUNT must be a repo/org secret (not environment-only) so the build job can push to Artifact Registry
 # Production environment must have "Required reviewers" set for manual approval
-# Firebase service account needs Cloud Run Admin role in GCP IAM
+# Firebase service account: Cloud Run Admin, Artifact Registry Writer, and Service Account User on the Cloud Run runtime SA
+# One-time per GCP project: create docker Artifact Registry repo "get-ducked-api" in us-central1, e.g.:
+#   gcloud artifacts repositories create get-ducked-api --repository-format=docker --location=us-central1 --project=PROJECT_ID
 name: CI/CD Pipeline
 
 on:
@@ -13,6 +16,9 @@ on:
 
 env:
   DOCKER_IMAGE: anambypamby/get-ducked-api
+  AR_LOCATION: us-central1
+  # Artifact Registry (test): Cloud Run pulls from here; Docker Hub mirror does not apply.
+  AR_IMAGE_TEST: us-central1-docker.pkg.dev/get-ducked-api-test/get-ducked-api/get-ducked-api
 
 jobs:
   # ============================================
@@ -58,11 +64,24 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Authenticate to Google Cloud (push image to Artifact Registry)
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.AR_LOCATION }}-docker.pkg.dev --quiet
+
       - name: Extract metadata and build
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.DOCKER_IMAGE }}
+          images: |
+            ${{ env.DOCKER_IMAGE }}
+            ${{ env.AR_IMAGE_TEST }}
           tags: |
             type=raw,value=${{ github.sha }}
             type=raw,value=latest
@@ -94,7 +113,7 @@ jobs:
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: get-ducked-api
-          image: ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
+          image: ${{ env.AR_IMAGE_TEST }}:${{ github.sha }}
           region: us-central1
           project_id: get-ducked-api-test
           env_vars: |
@@ -122,7 +141,7 @@ jobs:
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: get-ducked-api
-          image: ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
+          image: docker.io/${{ env.DOCKER_IMAGE }}:${{ github.sha }}
           region: us-central1
           project_id: get-ducked-api-prod
           env_vars: |
