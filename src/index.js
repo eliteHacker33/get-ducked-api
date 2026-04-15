@@ -58,9 +58,13 @@ fastify.register(openapiGlue, {
   serviceHandlers,
 });
 
+// Cloud Run (and many hosts) set PORT; local dev defaults to 3000.
+// Bind 0.0.0.0 so the process accepts traffic inside the container.
+const port = Number(process.env.PORT) || 3000;
+
 // Run the server!
 try {
-  await fastify.listen({ port: 3000 });
+  await fastify.listen({ port, host: '0.0.0.0' });
 } catch (err) {
   fastify.log.error(err);
   process.exit(1);
