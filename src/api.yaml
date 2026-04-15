@@ -33,8 +33,11 @@ paths:
               schema:
                 type: object
                 properties:
-                  message:
+                  id:
                     type: string
+                  createdAt:
+                    type: string
+                    format: date-time
         "404":
           description: QR code not found
           content:

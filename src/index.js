@@ -24,7 +24,7 @@ fastify.register(import('@fastify/mongodb'), {
 // Register JWT plugin for authentication
 //TODO - understand best practices for this secret (and all env secrets)
 fastify.register(import('@fastify/jwt'), {
-  secret: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
+  secret: process.env.JWT_SECRET,
 });
 
 // Create database indexes (users.email, qrCodes.id)

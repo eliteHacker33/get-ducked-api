@@ -62,13 +62,14 @@ describe('QR Code Routes', () => {
   });
 
   describe('GET /qrCode/:id', () => {
-    it('should return QR Code endpoint message', async () => {
+    it('should return the QR code document when found', async () => {
       const qrCodeId = 'test-qr-code-id';
+      const createdAt = new Date();
 
       // Mock QR code found
       qrCodesCollection.findOne.resolves({
         id: qrCodeId,
-        createdAt: new Date(),
+        createdAt,
       });
 
       const response = await fastify.inject({
@@ -78,7 +79,8 @@ describe('QR Code Routes', () => {
 
       assert.equal(response.statusCode, 200);
       const body = JSON.parse(response.body);
-      assert.equal(body.message, 'QR Code endpoint');
+      assert.equal(body.id, qrCodeId);
+      assert.equal(body.createdAt, createdAt.toISOString());
 
       // Verify findOne was called with correct id
       assert.isTrue(qrCodesCollection.findOne.calledOnce);

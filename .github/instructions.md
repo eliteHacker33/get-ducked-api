@@ -1,1 +1,0 @@
-I want to utilize this project to learn and grow. I want all auto-generated code to ber verified as "understood" by myself, to ensure i understand every piece of this application and how it is working. I acknowledge that I know about many of these topics, but I don't have actual experience implementing them, so i will need guidance and to ask a lot of questions on generated code.
