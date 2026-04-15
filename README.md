@@ -26,16 +26,19 @@ Create a **Docker** repository once per project (name and region must match the 
 - **Region:** `us-central1`
 - **Format:** Docker
 
-Example:
+Example (replace `YOUR_PROJECT_ID`):
 
 ```bash
 gcloud artifacts repositories create get-ducked-api \
   --repository-format=docker \
   --location=us-central1 \
   --project=YOUR_PROJECT_ID
+```
 
-  this is what i ran for test:
-  gcloud artifacts repositories create get-ducked-api \
+Example for the test project:
+
+```bash
+gcloud artifacts repositories create get-ducked-api \
   --repository-format=docker \
   --location=us-central1 \
   --project=get-ducked-api-test
@@ -49,6 +52,14 @@ The test deploy image path is:
 
 - **`FIREBASE_SERVICE_ACCOUNT`:** JSON key for the deploy service account. For the **build** job to push to Artifact Registry, this must be available as a **repository or organization** secret (not only an environment-only secret).
 - Per environment (`test` / `production`): **`MONGODB_URI`**, **`JWT_SECRET`**, and any other env-specific values your workflow expects.
+
+### Troubleshooting: `auth` must specify `workload_identity_provider` or `credentials_json`
+
+That usually means **`FIREBASE_SERVICE_ACCOUNT` is empty** for that job—`google-github-actions/auth` then sees no credential input.
+
+- **Build job:** It does **not** use `environment:`, so it **cannot** read **environment-only** secrets. Add **`FIREBASE_SERVICE_ACCOUNT`** under **Settings → Secrets and variables → Actions → Repository secrets** (you can paste the same JSON as in the `test` environment).
+- **Fork PRs / Dependabot:** Secrets are not passed to workflows from forks; runs on the default branch from your repo **do** get repository secrets.
+- **Alternative:** You could attach `environment: test` to the build job so it sees environment secrets, but that can force environment protection rules (e.g. approvals) on every build—repository secret is usually simpler.
 
 ### Production image source (optional follow-up)
 
